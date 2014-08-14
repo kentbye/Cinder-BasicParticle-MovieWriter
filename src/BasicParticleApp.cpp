@@ -4,12 +4,16 @@
 #include "cinder/Perlin.h"
 #include "cinder/Color.h"
 #include "cinder/gl/gl.h"
+#include "cinder/qtime/MovieWriter.h" // Include the MovieWriter
+#include "cinder/Utilities.h"
+
 
 #include <list>
 using std::list;
 
 using namespace ci;
 using namespace ci::app;
+
 
 class Particle {
  public:
@@ -39,11 +43,15 @@ class BasicParticleApp : public AppBasic {
 	Perlin			mPerlin;
 	list<Particle>	mParticles;
 	float			mAnimationCounter;
+    
+    qtime::MovieWriter mMovieWriter; // Create an instance within an application class
+
 };
 
 void BasicParticleApp::setup()
 {
-	mPerlin.setSeed( clock() );
+	setWindowSize	(5000,768); // Set a default window size here
+    mPerlin.setSeed( clock() );
 
 	mAnimationCounter = 0;
 	for( int s = 0; s < NUM_INITIAL_PARTICLES; ++s )
@@ -54,6 +62,15 @@ void BasicParticleApp::setup()
 
 	// Turn on additive blending
 	gl::enableAlphaBlending();
+    
+    
+    // Bring up a dialog box to save the output to a file
+    fs::path path = getSaveFilePath(); // directory to save
+    if( path.empty() )    return;    // cancel selecting directory
+    qtime::MovieWriter::Format format;
+    if( qtime::MovieWriter::getUserCompressionSettings( &format ) ) {
+        mMovieWriter = qtime::MovieWriter( path, getWindowWidth(), getWindowHeight(), format );
+    }
 }
 
 void BasicParticleApp::mouseDown( MouseEvent event )
@@ -81,6 +98,8 @@ bool BasicParticleApp::isOffscreen( const Vec2f &v )
 
 void BasicParticleApp::update()
 {
+	
+    
 	mAnimationCounter += 10.0f; // move ahead in time, which becomes the z-axis of our 3D noise
 
 	// Save off the last position for drawing lines
@@ -109,6 +128,7 @@ void BasicParticleApp::update()
 		if( isOffscreen( partIt->mPosition ) )
 			*partIt = Particle( Vec2f( Rand::randFloat( getWindowWidth() ), Rand::randFloat( getWindowHeight() ) ) );
 	}
+
 }
 
 void BasicParticleApp::draw()
@@ -125,6 +145,8 @@ void BasicParticleApp::draw()
 		glVertex2f( partIt->mPosition );
 	}
 	glEnd();
+    mMovieWriter.addFrame( copyWindowSurface() ); // Write the current frame to the video file
+
 }
 
 
